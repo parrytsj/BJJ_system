@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BJJ System Map</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0d0f0e;
+    --surface: #141716;
+    --border: #252a27;
+    --text: #c8d4cc;
+    --muted: #5a6b61;
+    --accent: #4ade80;
+    --accent2: #f97316;
+    --accent3: #60a5fa;
+    --danger: #f43f5e;
+    --gold: #fbbf24;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  header {
+    padding: 24px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+
+  header span {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 73px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sidebar-label {
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 8px 0 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .node-card {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: var(--surface);
+  }
+
+  .node-card:hover, .node-card.active {
+    border-color: var(--accent);
+    background: #1a2b1e;
+  }
+
+  .node-card .card-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 3px;
+  }
+
+  .node-card .card-type {
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .node-card.bridge .card-name { color: var(--accent3); }
+  .node-card.bridge:hover, .node-card.bridge.active { border-color: var(--accent3); background: #1a1f2b; }
+
+  /* MAIN CANVAS */
+  .canvas-wrap {
+    position: relative;
+    overflow: hidden;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(74,222,128,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(96,165,250,0.04) 0%, transparent 60%),
+      var(--bg);
+  }
+
+  svg#graph {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+
+  svg#graph:active { cursor: grabbing; }
+
+  /* DETAIL PANEL */
+  .detail-panel {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 340px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.25s ease;
+    max-height: 55%;
+    overflow-y: auto;
+  }
+
+  .detail-panel.visible {
+    transform: translateY(0);
+  }
+
+  .detail-panel h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .detail-panel h3.bridge-title { color: var(--accent3); }
+
+  .detail-type {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .detail-note {
+    font-size: 0.72rem;
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .cue-label {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .cue-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cue-list li {
+    font-size: 0.7rem;
+    padding: 5px 8px;
+    background: rgba(74,222,128,0.07);
+    border-left: 2px solid var(--accent);
+    color: var(--text);
+  }
+
+  .cue-list.bridge-cues li {
+    background: rgba(96,165,250,0.07);
+    border-color: var(--accent3);
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .close-btn:hover { color: var(--text); }
+
+  .legend {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(13,15,14,0.85);
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .tooltip {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    padding: 6px 10px;
+    font-size: 0.65rem;
+    color: var(--accent);
+    border-radius: 3px;
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BJJ System Map</h1>
+  <span>White Belt · No Stripe · Grapple Zone</span>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Core Positions</div>
+    <div id="sb-list"></div>
+    <div class="sidebar-label" style="margin-top:8px">Bridge Techniques</div>
+    <div id="sb-bridge-list"></div>
+  </div>
+
+  <div class="canvas-wrap">
+    <svg id="graph" viewBox="-400 -300 800 600"></svg>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Core position / anchor</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div> Submission finish</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> Bridge technique</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Top position</div>
+    </div>
+
+    <div class="detail-panel" id="detail">
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+      <h3 id="d-title"></h3>
+      <div class="detail-type" id="d-type"></div>
+      <div class="detail-note" id="d-note"></div>
+      <div class="cue-label" id="d-cue-label"></div>
+      <ul class="cue-list" id="d-cues"></ul>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+const nodes = [
+  // POSITIONS
+  { id: 'closed_guard', label: 'Closed Guard', type: 'position', color: '#4ade80', r: 28, x: -160, y: 80,
+    note: 'Your primary offensive platform from bottom. Entry point for the triangle system.',
+    cues: ['Break posture first — collar + sleeve or two collar grips', 'Hip angle is everything for triangle entry', 'Use feet on hips to create space'] },
+
+  { id: 'mount', label: 'Mount', type: 'position', color: '#fbbf24', r: 28, x: 60, y: -120,
+    note: 'Strong top position. Your go-to finishes from here are Americana and the figure-4 to back take sequence.',
+    cues: ['Stay high mount to open up arm attacks', 'Control one arm before committing to Americana', 'Trap their frame arm before transitioning to back'] },
+
+  { id: 'side_control', label: 'Side Control', type: 'position', color: '#fbbf24', r: 24, x: 200, y: -60,
+    note: 'Control position en route to mount or north-south. Baseline for the kimura and head-and-arm choke.',
+    cues: ['Far arm underhook to control', 'Head pressure + chest weight', 'Stay balanced — ready to shift to mount or NS'] },
+
+  { id: 'north_south', label: 'North South', type: 'position', color: '#fbbf24', r: 22, x: 260, y: 80,
+    note: 'Pressure position. Primary entry for your north-south kimura.',
+    cues: ['Burn their energy here before attacking', 'Swim to underhook the far arm for kimura entry', 'Head pressure limits their bridge'] },
+
+  { id: 'back_control', label: 'Back Control', type: 'position', color: '#fbbf24', r: 22, x: 60, y: 60,
+    note: 'High-percentage finishing position. Entry via mount-to-back transition.',
+    cues: ['Hooks in before hunting the choke', 'Seat belt — top arm choking side', 'Control their hands to strip defence'] },
+
+  // ANCHORS (core techniques)
+  { id: 'triangle', label: 'Triangle System', type: 'anchor', color: '#4ade80', r: 32, x: -300, y: -80,
+    note: 'Your most developed submission system. Triangle choke is primary; omoplata and armbar are secondaries off the same entry. Shoulder crunch entry is your setup.',
+    cues: ['Shoulder crunch to break posture → leg over trapped shoulder', 'Cut angle 45° before locking — hips must be perpendicular', 'If they posture: transition to omoplata (rotate away) or armbar (extend)'] },
+
+  { id: 'knee_slice', label: 'Knee Slice Pass', type: 'anchor', color: '#4ade80', r: 26, x: -80, y: -200,
+    note: 'Your primary guard pass. Gets you to side control. Chain to mount or north-south from there.',
+    cues: ['Inside control before initiating — collar tie + tricep grip', 'Drive knee across, keep hip pressure heavy', 'If they block: chain to folding pass or X-pass (you have these logged)'] },
+
+  { id: 'americana', label: 'Americana', type: 'anchor', color: '#f97316', r: 26, x: -100, y: -60,
+    note: 'Your most-hit submission from mount (2x in one session, 17 Mar). Also viable from side control. Figure-four grip, controlled shoulder rotation.',
+    cues: ['Isolate arm flat on the mat first', 'Wrist control before elbow — figure-four', 'If they resist: transition to armbar or figure-4 → back take'] },
+
+  { id: 'back_to_rnc', label: 'Mount → Back → RNC', type: 'anchor', color: '#f97316', r: 30, x: 200, y: -200,
+    note: 'Your mount-to-back transition sequence. Overhand grip on framing arm → bring over head → establish kimura grip → knee up → roll into back control → RNC.',
+    cues: ['Go higher in mount before initiating — more space to step over', 'Kimura grip, not just wrist — gives you the lever to roll them', 'Once on back: hooks first, choke second'] },
+
+  { id: 'ns_kimura', label: 'NS Kimura', type: 'anchor', color: '#f97316', r: 26, x: 300, y: -140,
+    note: 'From north-south, swim under the far arm for kimura grip. You hit this from side control too (logged 22 + 24 Mar). High-percentage finish at your level.',
+    cues: ['Transition from side control → NS when they turtle or turn away', 'Swim the underhook, establish figure-four before they react', 'If they defend: sit-up sweep threat or back take from turtle'] },
+
+  // BRIDGES
+  { id: 'side_to_mount', label: 'Side Control → Mount', type: 'bridge', color: '#60a5fa', r: 18, x: 120, y: -170,
+    note: 'Key bridge between your passing game and your mount submissions. Walk your knee up when they bridge away.',
+    cues: ['Use their bridge to slip the knee across', 'Control far arm underhook throughout transition'] },
+
+  { id: 'head_arm', label: 'Head & Arm Choke', type: 'bridge', color: '#60a5fa', r: 18, x: 310, y: 20,
+    note: 'You hit this from side control (17 Mar session note). Bridges side control and north-south into a direct finish. Head under their shoulder, step-over, apply shoulder and head pressure.',
+    cues: ['Head must go deep under their armpit', 'Step over to one side, weight forward', 'Squeeze bicep to shoulder — blood choke'] },
+
+  { id: 'armbar_sc', label: 'Armbar from Side Control', type: 'bridge', color: '#60a5fa', r: 18, x: 160, y: 80,
+    note: 'Logged 17 Mar. Pin arm with knee → scoop with opposite foot → step over into armbar. Bridges side control directly to a finish, bypassing mount.',
+    cues: ['Pin arm with knee before committing to the step', 'Both hands on shoulder control until feet are in position', 'Feet under the shoulder — squeeze knees'] },
+
+  { id: 'lockdown_choke', label: 'Lockdown H&A Choke', type: 'bridge', color: '#60a5fa', r: 18, x: -200, y: 200,
+    note: 'Logged today (24 Mar). Entry from knee shield sweeps. Bridges guard recovery / bottom half guard into a top-position finish.',
+    cues: ['Entry off knee shield sweep', 'Lock the head and arm before stepping to submission side'] },
+];
+
+const edges = [
+  // Triangle system connections
+  { from: 'closed_guard', to: 'triangle', label: 'shoulder crunch entry' },
+  { from: 'triangle', to: 'americana', label: 'if they posture: come up to top' },
+  
+  // Passing into top game
+  { from: 'closed_guard', to: 'knee_slice', label: 'stand & pass' },
+  { from: 'knee_slice', to: 'side_control', label: 'complete pass' },
+  { from: 'side_control', to: 'side_to_mount', label: '' },
+  { from: 'side_to_mount', to: 'mount', label: '' },
+  
+  // Mount submissions
+  { from: 'mount', to: 'americana', label: 'arm isolation' },
+  { from: 'mount', to: 'back_to_rnc', label: 'frame arm → back take' },
+  { from: 'back_to_rnc', to: 'back_control', label: '' },
+  { from: 'back_control', to: 'back_to_rnc', label: 'RNC finish' },
+
+  // Side control → NS
+  { from: 'side_control', to: 'north_south', label: 'circle to NS' },
+  { from: 'north_south', to: 'ns_kimura', label: 'swim underhook' },
+
+  // Bridge: head and arm from SC
+  { from: 'side_control', to: 'head_arm', label: '' },
+  { from: 'north_south', to: 'head_arm', label: '' },
+
+  // Bridge: armbar from SC
+  { from: 'side_control', to: 'armbar_sc', label: 'pin arm → step over' },
+
+  // Bridge: lockdown choke
+  { from: 'closed_guard', to: 'lockdown_choke', label: 'knee shield sweep' },
+
+  // Americana resistance: back take
+  { from: 'americana', to: 'back_to_rnc', label: 'if they resist → transition' },
+
+  // NS Kimura also accessible from side control directly
+  { from: 'side_control', to: 'ns_kimura', label: 'if they turn away' },
+];
+
+// ─── SVG RENDERING ──────────────────────────────────────────────────────────
+
+const svg = document.getElementById('graph');
+const NS = 'http://www.w3.org/2000/svg';
+
+function mkEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function getNode(id) { return nodes.find(n => n.id === id); }
+
+// Defs
+const defs = mkEl('defs', {});
+// Arrowheads for each color
+['#4ade80', '#60a5fa', '#fbbf24', '#f97316'].forEach((col, i) => {
+  const id = 'arrow' + i;
+  const marker = mkEl('marker', { id, markerWidth: '8', markerHeight: '8', refX: '6', refY: '3', orient: 'auto' });
+  const path = mkEl('path', { d: 'M0,0 L0,6 L8,3 z', fill: col, opacity: '0.5' });
+  marker.appendChild(path);
+  defs.appendChild(marker);
+});
+svg.appendChild(defs);
+
+const colorMarker = { '#4ade80': 'url(#arrow0)', '#60a5fa': 'url(#arrow1)', '#fbbf24': 'url(#arrow2)', '#f97316': 'url(#arrow3)' };
+
+// Edges
+const edgeGroup = mkEl('g', { class: 'edges' });
+edges.forEach(e => {
+  const a = getNode(e.from), b = getNode(e.to);
+  if (!a || !b) return;
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const nx = dx/dist, ny = dy/dist;
+  const x1 = a.x + nx * a.r, y1 = a.y + ny * a.r;
+  const x2 = b.x - nx * (b.r + 6), y2 = b.y - ny * (b.r + 6);
+  const cx = (a.x + b.x)/2 - dy*0.15, cy = (a.y + b.y)/2 + dx*0.15;
+
+  const col = a.color;
+  const path = mkEl('path', {
+    d: `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`,
+    stroke: col, 'stroke-width': '1.5', fill: 'none', opacity: '0.3',
+    'marker-end': colorMarker[col] || 'url(#arrow0)'
+  });
+  path.setAttribute('data-from', e.from);
+  path.setAttribute('data-to', e.to);
+  edgeGroup.appendChild(path);
+
+  if (e.label) {
+    const lx = (a.x + b.x)/2 - dy*0.15 + (Math.random()-0.5)*4;
+    const ly = (a.y + b.y)/2 + dx*0.15 + (Math.random()-0.5)*4;
+    const t = mkEl('text', { x: lx, y: ly, 'text-anchor': 'middle', fill: '#3d5047', 'font-size': '7', 'font-family': 'DM Mono, monospace' });
+    t.textContent = e.label;
+    edgeGroup.appendChild(t);
+  }
+});
+svg.appendChild(edgeGroup);
+
+// Nodes
+const nodeGroup = mkEl('g', { class: 'nodes' });
+nodes.forEach(n => {
+  const g = mkEl('g', { transform: `translate(${n.x},${n.y})`, cursor: 'pointer', class: 'node-g' });
+  g.setAttribute('data-id', n.id);
+
+  // Glow
+  const glow = mkEl('circle', { r: n.r + 8, fill: n.color, opacity: '0.06' });
+  
+  // Outer ring
+  const ring = mkEl('circle', { r: n.r + 2, fill: 'none', stroke: n.color, 'stroke-width': '1', opacity: '0.25' });
+  
+  // Main circle
+  const circle = mkEl('circle', { r: n.r, fill: '#141716', stroke: n.color, 'stroke-width': '2' });
+  
+  // Label — split into lines of max ~10 chars each
+  const words = n.label.split(' ');
+  const fontSize = n.r >= 28 ? 12 : n.r >= 22 ? 10 : 9;
+  const lineH = fontSize * 1.25;
+  // Build lines greedily
+  const lines = [];
+  let cur = '';
+  const maxChars = n.r >= 28 ? 10 : 8;
+  words.forEach(w => {
+    if (!cur) { cur = w; }
+    else if ((cur + ' ' + w).length <= maxChars) { cur += ' ' + w; }
+    else { lines.push(cur); cur = w; }
+  });
+  if (cur) lines.push(cur);
+
+  const text = mkEl('text', { 'text-anchor': 'middle', fill: n.color, 'font-family': 'Bebas Neue, sans-serif', 'pointer-events': 'none', 'dominant-baseline': 'auto' });
+  const totalH = lines.length * lineH;
+  lines.forEach((l, i) => {
+    const t = mkEl('tspan', { x: '0', y: String(-totalH / 2 + i * lineH + lineH * 0.8), 'font-size': String(fontSize) });
+    t.textContent = l;
+    text.appendChild(t);
+  });
+
+  g.appendChild(glow);
+  g.appendChild(ring);
+  g.appendChild(circle);
+  g.appendChild(text);
+
+  // Events
+  g.addEventListener('mouseenter', () => {
+    circle.setAttribute('stroke-width', '3');
+    glow.setAttribute('opacity', '0.14');
+  });
+  g.addEventListener('mouseleave', () => {
+    circle.setAttribute('stroke-width', '2');
+    glow.setAttribute('opacity', '0.06');
+  });
+  g.addEventListener('click', () => showDetail(n));
+
+  nodeGroup.appendChild(g);
+});
+svg.appendChild(nodeGroup);
+
+// ─── DETAIL PANEL ──────────────────────────────────────────────────────────
+
+function showDetail(n) {
+  const panel = document.getElementById('detail');
+  const title = document.getElementById('d-title');
+  const type = document.getElementById('d-type');
+  const note = document.getElementById('d-note');
+  const cueLabel = document.getElementById('d-cue-label');
+  const cues = document.getElementById('d-cues');
+
+  title.textContent = n.label;
+  title.className = n.type === 'bridge' ? 'bridge-title' : '';
+  type.textContent = n.type.toUpperCase() + (n.type === 'anchor' ? ' — CORE TECHNIQUE' : n.type === 'bridge' ? ' — BRIDGE MOVE' : ' — POSITION');
+  note.textContent = n.note || '';
+  cueLabel.textContent = 'Key cues';
+  cues.innerHTML = '';
+  cues.className = 'cue-list' + (n.type === 'bridge' ? ' bridge-cues' : '');
+  (n.cues || []).forEach(c => {
+    const li = document.createElement('li');
+    li.textContent = c;
+    cues.appendChild(li);
+  });
+
+  // Highlight connected edges
+  document.querySelectorAll('.edges path').forEach(p => {
+    const active = p.getAttribute('data-from') === n.id || p.getAttribute('data-to') === n.id;
+    p.setAttribute('opacity', active ? '0.85' : '0.15');
+  });
+
+  panel.classList.add('visible');
+
+  // Sidebar highlight
+  document.querySelectorAll('.node-card').forEach(c => {
+    c.classList.toggle('active', c.getAttribute('data-id') === n.id);
+  });
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.remove('visible');
+  document.querySelectorAll('.edges path').forEach(p => p.setAttribute('opacity', '0.3'));
+  document.querySelectorAll('.node-card').forEach(c => c.classList.remove('active'));
+}
+
+// ─── SIDEBAR ───────────────────────────────────────────────────────────────
+
+const sbList = document.getElementById('sb-list');
+const sbBridge = document.getElementById('sb-bridge-list');
+
+nodes.forEach(n => {
+  const card = document.createElement('div');
+  card.className = 'node-card' + (n.type === 'bridge' ? ' bridge' : '');
+  card.setAttribute('data-id', n.id);
+  card.innerHTML = `<div class="card-name">${n.label}</div><div class="card-type">${n.type}</div>`;
+  card.addEventListener('click', () => showDetail(n));
+  if (n.type === 'bridge') sbBridge.appendChild(card);
+  else sbList.appendChild(card);
+});
+
+// ─── PAN / ZOOM ────────────────────────────────────────────────────────────
+
+let vx = -400, vy = -300, vw = 800, vh = 600;
+let dragging = false, lastX, lastY;
+
+svg.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const rect = svg.getBoundingClientRect();
+  const scaleX = vw / rect.width;
+  const scaleY = vh / rect.height;
+  vx -= (e.clientX - lastX) * scaleX;
+  vy -= (e.clientY - lastY) * scaleY;
+  lastX = e.clientX; lastY = e.clientY;
+  svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+});
+
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 1.1 : 0.9;
+  const rect = svg.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / rect.width * vw + vx;
+  const my = (e.clientY - rect.top) / rect.height * vh + vy;
+  vw *= factor; vh *= factor;
+  vx = mx - (mx - vx) * factor;
+  vy = my - (my - vy) * factor;
+  svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+}, { passive: false });
+</script>
+</body>
+</html>
